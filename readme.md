@@ -14,6 +14,8 @@ Future features include:
 * USB serial communication
 * SDRAM storage instead of on-chip memory
 
+Read more at [./docs/cpu.md](./docs/cpu.md)
+
 ## ISA
 
 The RUFF ISA is a RISC instruction set, with each instruction being exactly
