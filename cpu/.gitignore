@@ -1,0 +1,4 @@
+# Verilator output directory
+obj_dir/
+# Clangd cache
+.cache/
