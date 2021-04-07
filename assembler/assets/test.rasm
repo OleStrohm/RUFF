@@ -1,0 +1,6 @@
+label:
+    mov R0, 4
+    mov R1, 4437
+    mov R2, 4920
+    mov R3, 0314
+    mov R10, 0123456789
