@@ -1,7 +1,9 @@
-label: garbage
+label:
+    mov R100, 0
     mov R0, 4
-    mov R17, 4
-    mov R1pp, 4437
+    mov R0, 4 hello
     mov R2, 4920
+    jmp label
+    label2: this shouldn't be here
     mov R3, 0314
     mov R10, 0123456789
