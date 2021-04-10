@@ -1,16 +1,30 @@
+use crate::lexer::Token;
 use codespan_reporting::diagnostic::Diagnostic;
 use codespan_reporting::diagnostic::Label;
+use std::convert::Into;
 use std::ops::Range;
 
-use crate::Peeked;
+pub type ParseResult<T> = Result<T, ParseError>;
 
-pub(super) type ParseResult<T> = Result<T, ParseError>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CodeSpan(pub usize, pub usize);
+
+impl From<CodeSpan> for Range<usize> {
+    fn from(CodeSpan(start, end): CodeSpan) -> Self {
+        start..end
+    }
+}
 
 #[derive(Debug)]
-pub(super) enum ParseError {
-    NotAReg(Range<usize>),
-    ExpectedReg(usize),
-    Expected(Peeked, usize),
+pub enum ParseError {
+    NotAReg(CodeSpan),
+    ExpectedIdent(Token),
+    ExpectedReg(Token),
+    ExpectedNumber(Token),
+    ExpectedColon(Token),
+    ExpectedComma(Token),
+    ExpectedEOL(Token),
+    UnexpectedEOL,
 }
 
 impl ParseError {
@@ -20,24 +34,31 @@ impl ParseError {
         line: &str,
         file_id: FileId,
     ) -> Diagnostic<FileId> {
-        let span = match self {
-            ParseError::NotAReg(span) => span.clone(),
-            ParseError::Expected(Peeked::EOL, loc) => *loc..line.len(),
-            ParseError::ExpectedReg(loc) | ParseError::Expected(_, loc) => *loc..(*loc + 1),
-        };
+        let span: Range<_> = match *self {
+            ParseError::NotAReg(span) => span,
+            ParseError::ExpectedReg(token) => token.into(),
+            ParseError::ExpectedIdent(token) => token.into(),
+            ParseError::ExpectedNumber(token) => token.into(),
+            ParseError::ExpectedColon(token) => token.into(),
+            ParseError::ExpectedComma(token) => token.into(),
+            ParseError::ExpectedEOL(token) => CodeSpan(CodeSpan::from(token).0, line.len()),
+            ParseError::UnexpectedEOL => CodeSpan(line.len()-1, line.len()-1),
+        }
+        .into();
 
         let label = match self {
             ParseError::NotAReg(_) => {
                 format!("`{}` is not a valid register", &line[span.clone()])
             }
             ParseError::ExpectedReg(_) => format!("Not a register"),
-            ParseError::Expected(Peeked::EOL, _) => {
+            ParseError::ExpectedEOL(_) => {
                 format!("Expected EOL, found `{}`", &line[span.clone()])
             }
-            ParseError::Expected(Peeked::Ident, _) => "Expected label or op".into(),
-            ParseError::Expected(Peeked::Numeric, _) => "Expected number".into(),
-            ParseError::Expected(Peeked::Colon, _) => "Expected `:` after label".into(),
-            ParseError::Expected(Peeked::Comma, _) => "Expected `,` between parameters".into(),
+            ParseError::ExpectedIdent(_) => "Expected label or op".into(),
+            ParseError::ExpectedNumber(_) => "Expected number".into(),
+            ParseError::ExpectedColon(_) => "Expected `:` here".into(),
+            ParseError::ExpectedComma(_) => "Expected `,` here".into(),
+            ParseError::UnexpectedEOL => "Unexpected EOL".into(),
         };
 
         let span = Range {
@@ -54,11 +75,12 @@ impl ParseError {
         match self {
             ParseError::NotAReg(_) => "Register does not exist",
             ParseError::ExpectedReg(_) => "Expected a register",
-            ParseError::Expected(Peeked::EOL, _) => "Found junk at end of line",
-            ParseError::Expected(Peeked::Ident, _) => "Expected label or op",
-            ParseError::Expected(Peeked::Numeric, _) => "Expected number",
-            ParseError::Expected(Peeked::Colon, _) => "Expected `:` after label",
-            ParseError::Expected(Peeked::Comma, _) => "Expected `,` between parameters",
+            ParseError::ExpectedIdent(_) => "Expected label or op",
+            ParseError::ExpectedNumber(_) => "Expected number",
+            ParseError::ExpectedColon(_) => "Expected `:` after label",
+            ParseError::ExpectedComma(_) => "Expected `,` between parameters",
+            ParseError::ExpectedEOL(_) => "Found junk at end of line",
+            ParseError::UnexpectedEOL => "Line ended prematurely",
         }
     }
 }
