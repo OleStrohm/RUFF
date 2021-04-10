@@ -1,5 +1,7 @@
 # RUFF - Relatively Understandable Flip-flops
 
+DISCLAIMER: Almost all the features mentioned in this entire repository is features I expect to complete, not implemented features.
+
 The RUFF cpu and assembly language will be my way of learning more about how to
 create cpus in HDL, how to design an ISA and assembly language.
 
