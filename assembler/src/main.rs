@@ -1,31 +1,36 @@
 mod error;
-mod instr;
 mod lexer;
 mod parser;
 mod reg;
+mod codegen;
 
 use crate::parser::ParseLine;
-use codespan_reporting::{
-    files::SimpleFiles,
-    term::{
+use codegen::Codegen;
+use codespan_reporting::{diagnostic::Diagnostic, files::SimpleFiles, term::{
         termcolor::{ColorChoice, StandardStream},
         Config,
-    },
-};
+    }};
 use std::fs;
 
 fn main() {
     let contents = fs::read_to_string("assets/test.rasm").expect("Could not read file");
-
     let mut files = SimpleFiles::new();
 
     let file_id = files.add("assets/test.rasm", contents.as_str());
 
+    if let Err(errs) = assemble(contents.clone(), file_id) {
     let writer = StandardStream::stderr(ColorChoice::Always);
     let config = Config::default();
+        errs.iter().for_each(|diagnostic| 
+            codespan_reporting::term::emit(&mut writer.lock(), &config, &files, &diagnostic)
+                .unwrap());
+    }
+}
 
+fn assemble(contents: String, file_id: usize) -> Result<(), Vec<Diagnostic<usize>>>{
     let (parse_instrs, errors) = contents
         .lines()
+        .filter(|l| !l.starts_with("//"))
         .map(|l| (l, ParseLine::new(l)))
         .scan(0, |offset, (line, parse_line)| {
             let res = parse_line.parse();
@@ -36,13 +41,9 @@ fn main() {
         .partition::<Vec<_>, _>(|(_, e)| e.is_ok());
 
     if !errors.is_empty() {
-        for ((offset, line), err) in errors {
-            let err = err.unwrap_err();
-            let diagnostic = err.diagnostic(offset, line, file_id);
-            codespan_reporting::term::emit(&mut writer.lock(), &config, &files, &diagnostic)
-                .unwrap();
-        }
-        return;
+        return Err(errors.into_iter().map(|((offset, line), err)| {
+            err.unwrap_err().diagnostic(offset, line, file_id)
+        }).collect());
     }
 
     let longest_line = parse_instrs
@@ -55,8 +56,20 @@ fn main() {
         .max()
         .unwrap();
 
-    for (_, instr) in parse_instrs {
-        let instr = instr.unwrap();
+    let instrs: Vec<_> = parse_instrs.into_iter().map(|(_, instr)| instr.unwrap()).collect();
+
+    for instr in instrs.iter() {
         println!("{0: <pad$} | {0:?}", instr, pad = longest_line);
     }
+
+    let codegen = match Codegen::new(instrs).and_then(|cg| cg.gen()) {
+        Ok(codegen) => codegen,
+        Err(_) => return Err(vec![]),
+    };
+
+    for (loc, instr) in (0..).map(|i| 4*i).zip(codegen.iter()) {
+        println!("{:08X}: {:08X}", loc, instr);
+    }
+
+    Ok(())
 }

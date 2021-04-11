@@ -42,3 +42,25 @@ impl From<u32> for Register {
     }
 }
 
+impl From<&Register> for u32 {
+    fn from(reg: &Register) -> Self {
+        match reg {
+            Register::R0 => 0,
+            Register::R1 => 1,
+            Register::R2 => 2,
+            Register::R3 => 3,
+            Register::R4 => 4,
+            Register::R5 => 5,
+            Register::R6 => 6,
+            Register::R7 => 7,
+            Register::R8 => 8,
+            Register::R9 => 9,
+            Register::R10 => 10,
+            Register::R11 => 11,
+            Register::R12 => 12,
+            Register::R13 => 13,
+            Register::R14 => 14,
+            Register::R15 => 15,
+        }
+    }
+}
