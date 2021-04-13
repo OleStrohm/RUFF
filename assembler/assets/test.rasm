@@ -1,11 +1,5 @@
-label:
-    jmp label
-    mov R0, 4
+    mov R0, 0
 loop:
-    mov R1, 128
+    mov R0, 4
+    mov R1, 7
     jmp loop
-    mov R7, 15
-    mov R8, 1
-//    mov R2, 4920
-//    mov R3, 0314
-//    mov R10, 0123456789

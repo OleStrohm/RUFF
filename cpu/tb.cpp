@@ -12,6 +12,8 @@ void step(Vcpu *top, uint64_t &time);
 #define QWORD(loc)                                                             \
   ((cpu->onchip_mem[loc + 3] << 24) | (cpu->onchip_mem[loc + 2] << 16) |       \
    (cpu->onchip_mem[loc + 1] << 8) | (cpu->onchip_mem[loc]))
+#define R0 cpu->regs[0]
+#define pc cpu->pc
 
 template <unsigned int N> void init_rom(CData mem[N]) {
   std::ifstream rom("rom.bin", std::ios::in | std::ios::binary);
@@ -43,7 +45,8 @@ int main(int argc, char **argv, char **env) {
   INIT_ROM(cpu->onchip_mem);
 
   while (!Verilated::gotFinish() && time < 10) {
-    printf("rip: %08X\tinstr:%08X\n", cpu->instr_addr, QWORD(cpu->instr_addr));
+    printf("rip: %08X\tinstr:%08X\t", pc, QWORD(pc));
+    printf("R0: %08X\tR1: %08X\n", R0, cpu->regs[1]);
     step(top, time);
   }
 

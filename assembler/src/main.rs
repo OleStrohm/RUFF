@@ -4,16 +4,31 @@ mod parser;
 mod reg;
 mod codegen;
 
+use std::io::Write;
 use crate::parser::ParseLine;
 use codegen::Codegen;
 use codespan_reporting::{diagnostic::Diagnostic, files::SimpleFiles, term::{
         termcolor::{ColorChoice, StandardStream},
         Config,
     }};
+use fs::File;
 use std::fs;
 
 fn main() {
-    let contents = fs::read_to_string("assets/test.rasm").expect("Could not read file");
+    let file = std::env::args().collect::<Vec<_>>().get(1).cloned();
+    let file = if let Ok(_) = std::env::var("CARGO") {
+        file.unwrap_or("assets/test.rasm".into())
+    } else {
+        match file {
+            Some(file) => file,
+            None => {
+                eprintln!("No input file supplied");
+                return;
+            }
+        }
+    };
+
+    let contents = fs::read_to_string(file).expect("Could not read file");
     let mut files = SimpleFiles::new();
 
     let file_id = files.add("assets/test.rasm", contents.as_str());
@@ -67,8 +82,12 @@ fn assemble(contents: String, file_id: usize) -> Result<(), Vec<Diagnostic<usize
         Err(_) => return Err(vec![]),
     };
 
+    let mut out = File::create("out.bin").unwrap();
+    
     for (loc, instr) in (0..).map(|i| 4*i).zip(codegen.iter()) {
         println!("{:08X}: {:08X}", loc, instr);
+
+        out.write_all(&instr.to_le_bytes()).unwrap();
     }
 
     Ok(())
